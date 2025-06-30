@@ -17,9 +17,12 @@
  * under the License.
  */
 import { JsonArray, t } from '@superset-ui/core';
+import { nanoid } from 'nanoid';
 import {
+  ColumnMeta,
   ControlPanelConfig,
   ControlPanelsContainerProps,
+  ControlPanelState,
   ControlSetRow,
   ControlStateMapping,
   ControlSubSectionHeader,
@@ -288,6 +291,93 @@ function createAxisControl(axis: 'x' | 'y'): ControlSetRow[] {
   ];
 }
 
+const stackGroupsSection = [
+  [{
+    name: 'stackGroups',
+    config: {
+      type: 'CheckboxControl',
+      label: t('Enable Stack Groups'),
+      default: false,
+      renderTrigger: true,
+      description: t('Enable stacking by groups'),
+      tabOverride: 'customize',
+    },
+  }],
+  [
+    {
+      name: 'stackGroupsList',
+      config: {
+        type: 'CollectionControl',
+        label: t('Stack Groups'),
+        default: [],
+        renderTrigger: true,
+        controlName: 'SelectControl',
+        placeholder: t('No stack groups configured'),
+        addTooltip: t('Add stack group'),
+        tabOverride: 'customize',
+        itemGenerator: () => {
+          const newItem = {
+            key: nanoid(11),
+            value: [],
+          };
+          console.log('DEBUG [stackGroupsList]: New item created ->', newItem);
+          return newItem;
+        },
+        keyAccessor: (item: any) => item.key,
+        shouldMapStateToProps: () => true,
+        mapStateToProps: (state: ControlPanelState) => {
+          const currentItems = state.controls.stackGroupsList?.value;
+          let correctedItems: any[] = [];
+          if (Array.isArray(currentItems)) {
+            correctedItems = currentItems.map((item: any) => {
+              const newItem = { ...item };
+              const selectedValues: any[] = [];
+              // Find and remove the broken numeric keys, collecting their values
+              Object.keys(newItem).forEach(key => {
+                if (!isNaN(parseInt(key, 10))) {
+                  selectedValues.push(newItem[key]);
+                  delete newItem[key];
+                }
+              });
+              // If we found values under numeric keys, they are the source of truth
+              if (selectedValues.length > 0) {
+                newItem.value = selectedValues;
+              }
+              return newItem;
+            });
+          }
+          console.log(
+            'DEBUG [stackGroupsList]: Cleaned items ->',
+            correctedItems,
+          );
+
+          const legendValues = ((state?.datasource?.columns ||
+            []) as ColumnMeta[])
+            .filter((col: ColumnMeta) => col.groupby)
+            .map((col: ColumnMeta) => [
+              col.column_name,
+              col.verbose_name || col.column_name,
+            ]);
+
+          return {
+            value: correctedItems,
+            choices: legendValues,
+            multi: true,
+          };
+        },
+        visibility: ({ controls }: ControlPanelsContainerProps) => {
+          console.log(
+            'DEBUG [stackGroupsList]: Control state for render ->',
+            controls.stackGroupsList,
+          );
+          const stackGroupsValue = controls?.stackGroups?.value;
+          return stackGroupsValue === true;
+        },
+      },
+    },
+  ],
+];
+
 const config: ControlPanelConfig = {
   controlPanelSections: [
     sections.echartsTimeSeriesQueryWithXAxisSort,
@@ -367,6 +457,7 @@ const config: ControlPanelConfig = {
             },
           },
         ],
+        ...stackGroupsSection,
         [minorTicks],
         [
           {
