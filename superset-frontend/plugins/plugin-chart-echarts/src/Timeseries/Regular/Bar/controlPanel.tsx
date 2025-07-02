@@ -292,17 +292,19 @@ function createAxisControl(axis: 'x' | 'y'): ControlSetRow[] {
 }
 
 const stackGroupsSection = [
-  [{
-    name: 'stackGroups',
-    config: {
-      type: 'CheckboxControl',
-      label: t('Enable Stack Groups'),
-      default: false,
-      renderTrigger: true,
-      description: t('Enable stacking by groups'),
-      tabOverride: 'customize',
+  [
+    {
+      name: 'stackGroups',
+      config: {
+        type: 'CheckboxControl',
+        label: t('Enable Stack Groups'),
+        default: false,
+        renderTrigger: true,
+        description: t('Enable stacking by groups'),
+        tabOverride: 'customize',
+      },
     },
-  }],
+  ],
   [
     {
       name: 'stackGroupsList',
@@ -351,8 +353,9 @@ const stackGroupsSection = [
             correctedItems,
           );
 
-          const legendValues = ((state?.datasource?.columns ||
-            []) as ColumnMeta[])
+          const legendValues = (
+            (state?.datasource?.columns || []) as ColumnMeta[]
+          )
             .filter((col: ColumnMeta) => col.groupby)
             .map((col: ColumnMeta) => [
               col.column_name,

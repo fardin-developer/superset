@@ -54,6 +54,7 @@ import {
   EchartsTimeseriesFormData,
   OrientationType,
   TimeseriesChartTransformedProps,
+  EchartsTimeseriesSeriesType,
 } from './types';
 import { DEFAULT_FORM_DATA } from './constants';
 import { ForecastSeriesEnum, ForecastValue, Refs } from '../types';
@@ -194,6 +195,7 @@ export default function transformProps(
     yAxisTitlePosition,
     zoomable,
     stackDimension,
+    stackGroupsList,
   }: EchartsTimeseriesFormData = { ...DEFAULT_FORM_DATA, ...formData };
   const refs: Refs = {};
   const groupBy = ensureIsArray(groupby);
@@ -310,7 +312,7 @@ export default function transformProps(
         markerEnabled,
         markerSize,
         areaOpacity: opacity,
-        seriesType,
+        seriesType: 'bar' as EchartsTimeseriesSeriesType,
         legendState,
         stack,
         formatter: forcePercentFormatter
@@ -334,16 +336,36 @@ export default function transformProps(
       },
     );
     if (transformedSeries) {
-      if (stack === StackControlsValue.Stream) {
-        // bug in Echarts - `stackStrategy: 'all'` doesn't work with nulls, so we cast them to 0
-        series.push({
-          ...transformedSeries,
-          data: (transformedSeries.data as any).map(
-            (row: [string | number, number]) => [row[0], row[1] ?? 0],
-          ),
+      if (Array.isArray(stackGroupsList) && stackGroupsList.length > 0) {
+        stackGroupsList.forEach((group: any, groupIdx: number) => {
+          const groupKey = group.key || `stackGroup${groupIdx + 1}`;
+          const groupValues = Array.isArray(group.value) ? group.value : [];
+          groupValues.forEach((val: any, valIdx: any) => {
+            const colorKey = val ? String(val) : 'unknown';
+            series.push({
+              ...transformedSeries,
+              type: 'bar' as const,
+              name: val,
+              data: (transformedSeries.data as [number, number][]).map(d => [
+                d[0],
+                d[1],
+              ]),
+              stack: groupKey,
+              itemStyle: { color: colorScale(colorKey) },
+            } as SeriesOption);
+          });
         });
       } else {
-        series.push(transformedSeries);
+        series.push({
+          ...transformedSeries,
+          type: 'bar' as const,
+          name: 'Metric Bar',
+          data: (transformedSeries.data as [number, number][]).map(d => [
+            d[0],
+            d[1],
+          ]),
+          stack: 'metrics',
+        } as SeriesOption);
       }
     }
   });
